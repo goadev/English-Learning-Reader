@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>テキスト読み上げ Web App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #f8fafc;
+        }
+        .glass-morphism {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="w-full max-w-2xl glass-morphism p-8 rounded-3xl shadow-xl">
+        <h1 class="text-3xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <span>🔊</span> テキスト読み上げ
+        </h1>
+
+        <!-- Text Input Area -->
+        <div class="mb-6">
+            <label for="text-input" class="block text-sm font-medium text-slate-600 mb-2">読み上げるテキストを入力または貼り付け</label>
+            <textarea id="text-input" rows="8" 
+                class="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all resize-none text-slate-700"
+                placeholder="ここにテキストを入力してください..."></textarea>
+        </div>
+
+        <!-- Controls Area -->
+        <div class="space-y-6">
+            <!-- Rate Slider -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label for="rate-range" class="text-sm font-medium text-slate-600">再生速度</label>
+                    <span id="rate-value" class="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">1.0x</span>
+                </div>
+                <input type="range" id="rate-range" min="0.5" max="2" step="0.1" value="1"
+                    class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600">
+                <div class="flex justify-between text-xs text-slate-400 mt-1">
+                    <span>0.5x</span>
+                    <span>1.0x (標準)</span>
+                    <span>2.0x</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="grid grid-cols-2 gap-4">
+                <button id="btn-speak" class="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all active:scale-95 shadow-lg shadow-blue-200">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    再生する
+                </button>
+                <button id="btn-stop" class="flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-4 rounded-2xl transition-all active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12"></rect></svg>
+                    停止
+                </button>
+            </div>
+        </div>
+
+        <!-- Status Message -->
+        <div id="status-msg" class="mt-6 text-center text-sm text-slate-400 hidden">
+            再生中...
+        </div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('text-input');
+        const rateRange = document.getElementById('rate-range');
+        const rateValue = document.getElementById('rate-value');
+        const btnSpeak = document.getElementById('btn-speak');
+        const btnStop = document.getElementById('btn-stop');
+        const statusMsg = document.getElementById('status-msg');
+
+        const synth = window.speechSynthesis;
+
+        // Update rate display when slider moves
+        rateRange.addEventListener('input', () => {
+            rateValue.textContent = `${parseFloat(rateRange.value).toFixed(1)}x`;
+        });
+
+        // Function to speak the text
+        function speak() {
+            if (synth.speaking) {
+                synth.cancel(); // Stop current if playing
+            }
+
+            if (textInput.value.trim() === '') {
+                showTemporaryMessage('テキストを入力してください');
+                return;
+            }
+
+            const utterance = new SpeechSynthesisUtterance(textInput.value);
+            
+            // Apply speed setting
+            utterance.rate = parseFloat(rateRange.value);
+            
+            // Set Japanese voice if available
+            const voices = synth.getVoices();
+            const jaVoice = voices.find(v => v.lang.includes('ja-JP'));
+            if (jaVoice) {
+                utterance.voice = jaVoice;
+            }
+
+            utterance.onstart = () => {
+                statusMsg.classList.remove('hidden');
+                btnSpeak.classList.add('opacity-50');
+            };
+
+            utterance.onend = () => {
+                statusMsg.classList.add('hidden');
+                btnSpeak.classList.remove('opacity-50');
+            };
+
+            utterance.onerror = () => {
+                statusMsg.classList.add('hidden');
+                btnSpeak.classList.remove('opacity-50');
+            };
+
+            synth.speak(utterance);
+        }
+
+        // Event Listeners
+        btnSpeak.addEventListener('click', speak);
+        
+        btnStop.addEventListener('click', () => {
+            synth.cancel();
+            statusMsg.classList.add('hidden');
+            btnSpeak.classList.remove('opacity-50');
+        });
+
+        function showTemporaryMessage(msg) {
+            const originalText = statusMsg.textContent;
+            statusMsg.textContent = msg;
+            statusMsg.classList.remove('hidden');
+            setTimeout(() => {
+                statusMsg.classList.add('hidden');
+                statusMsg.textContent = originalText;
+            }, 2000);
+        }
+
+        // Initialize voices (needed for some browsers)
+        window.speechSynthesis.onvoiceschanged = () => {
+            console.log("Voices loaded");
+        };
+    </script>
+</body>
+</html>
